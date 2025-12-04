@@ -75,7 +75,7 @@ function App() {
     // --- ACTIONS ---
     const handleAuth = async (form, isRegistering) => {
         const endpoint = isRegistering ? '/register' : '/login';
-        const URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+        const URL = import.meta.env.VITE_SERVER_URL || "http://82.67.145.215:3001";
         try {
             const res = await fetch(`${URL}${endpoint}`, {
                 method: 'POST',

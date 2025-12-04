@@ -5,7 +5,7 @@
 let apiUrl = import.meta.env.VITE_API_URL;
 
 // 2. Si le .env est vide (cas Nginx proxy), on utilise l'origine actuelle
-if (!apiUrl || apiUrl === "") {
+if (!apiUrl || apiUrl === "http://82.67.145.215:3001") {
     // Si tu es sur http://mon-site.com, l'API sera considérée comme étant sur la même base
     apiUrl = window.location.origin;
 }
