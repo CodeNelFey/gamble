@@ -14,7 +14,7 @@ dist-ssr
 
 .idea
 
-gamble.db
+server/gamble.db
 
 client/.env
 
