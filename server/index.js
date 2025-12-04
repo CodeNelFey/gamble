@@ -1,3 +1,4 @@
+// server/index.js
 const path = require('path');
 // Charge les variables du fichier .env situé à la racine
 require('dotenv').config({ path: path.join(__dirname, '../.env') });

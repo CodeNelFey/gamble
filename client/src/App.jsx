@@ -1,10 +1,9 @@
-// src/App.jsx
 import { useState, useEffect } from 'react';
 import { socket } from './services/socket';
 import './App.css';
 
 // Import Views & Components
-import Navbar from './components/layout/NavBar.jsx';
+import Navbar from './components/layout/Navbar';
 import Auth from './components/layout/Auth';
 import Lobby from './views/Lobby';
 import Game from './views/Game';
@@ -32,21 +31,13 @@ function App() {
             try {
                 const parsedUser = JSON.parse(savedUser);
                 setUser(parsedUser);
-                // On met à jour ses infos depuis le serveur pour être sûr du solde
-                fetchUserData(parsedUser.id);
+                // On pourrait ici appeler une route /me pour vérifier le token/solde à jour
             } catch (e) {
                 console.error("Erreur lecture session");
                 localStorage.removeItem('gamble_user');
             }
         }
     }, []);
-
-    // Fonction pour rafraîchir le solde à la connexion auto
-    const fetchUserData = async (dbId) => {
-        // Cette fonction suppose que tu pourrais créer une route /user/:id sur ton serveur
-        // Mais pour l'instant, on fait confiance au localStorage ou on attend le socket
-        // Idéalement, on envoie un event socket pour dire "Je suis là, envoie mon solde"
-    };
 
     // --- 2. SOCKET LISTENERS ---
     useEffect(() => {
@@ -71,7 +62,6 @@ function App() {
 
         // CORRECTION TABLES : On reçoit la liste
         socket.on("room_list", (list) => {
-            console.log("Liste reçue :", list); // Debug
             setRoomsList(list);
         });
 
@@ -96,8 +86,8 @@ function App() {
     // --- ACTIONS ---
     const handleAuth = async (form, isRegistering) => {
         const endpoint = isRegistering ? '/register' : '/login';
-        // Utilisation de la config .env
-        const URL = import.meta.env.VITE_SERVER_URL
+        // Utilisation de la config .env (via import.meta) ou fallback
+        const URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
         try {
             const res = await fetch(`${URL}${endpoint}`, {
                 method: 'POST',
