@@ -11,6 +11,7 @@ import Blackjack from './views/Blackjack';
 import Slots from './views/Slots';
 import Ranking from './views/Ranking';
 import { IconRoulette } from './components/ui/Icons';
+import {API_URL} from "./config.js";
 
 function App() {
     const [user, setUser] = useState(null);
@@ -75,7 +76,7 @@ function App() {
     // --- ACTIONS ---
     const handleAuth = async (form, isRegistering) => {
         const endpoint = isRegistering ? '/register' : '/login';
-        const URL = import.meta.env.VITE_SERVER_URL || "http://82.67.145.215:3001";
+        const URL = API_URL
         try {
             const res = await fetch(`${URL}${endpoint}`, {
                 method: 'POST',

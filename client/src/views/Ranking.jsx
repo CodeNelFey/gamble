@@ -1,5 +1,6 @@
 // src/views/Ranking.jsx
 import React, { useEffect, useState } from 'react';
+import {API_URL} from "../config.js";
 
 export default function Ranking({ user }) {
     const [leaderboard, setLeaderboard] = useState([]);
@@ -8,10 +9,12 @@ export default function Ranking({ user }) {
         const fetchLeaderboard = async () => {
             try {
                 // Adapter l'URL si tu es en prod
-                const URL = window.location.hostname === 'localhost' ? "http://localhost:3001" : "http://ton-domaine.com";
+                const URL = API_URL;
+                console.log("Fetching leaderboard for leaderboard ", URL);
                 const res = await fetch(`${URL}/leaderboard`);
                 const data = await res.json();
                 setLeaderboard(data);
+                // eslint-disable-next-line no-unused-vars
             } catch (e) { console.error("Erreur ranking"); }
         };
         fetchLeaderboard();

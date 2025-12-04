@@ -18,7 +18,7 @@ export default function Game({ roomData, timeLeft, leaveRoom, betAmount, setBetA
             {/* --- HEADER HARMONISÉ (STYLE BLACKJACK) --- */}
             <header className="game-header">
                 <div style={{display:'flex', gap:10, alignItems:'center'}}>
-                    <h2 style={{margin:0, color:'#FFD700', fontSize:'1.2rem'}}>HIGH / LOW</h2>
+                    <h2 style={{margin:0, color:'#FFD700', fontSize:'1.2rem'}}>BUS DRIVER</h2>
                     <span style={{color:'gray', fontSize:'0.9rem'}}>Table: {roomData.id}</span>
                 </div>
                 <button className="leave-btn" onClick={leaveRoom}><IconDoor /> QUITTER</button>

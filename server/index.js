@@ -63,8 +63,6 @@ const SUITS = ['♥', '♦', '♠', '♣'];
 const VALUES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
 // --- CONFIGURATION SLOTS (MODIFIÉE POUR ~35% WIN RATE) ---
-// Total des poids = 1+2+4+8+15+70 = 100
-// Probabilité Cerise = (70/100)^3 = 0.343 = 34.3%
 const SLOT_SYMBOLS = [
     { id: '7', char: 'seven', weight: 1, payout: 100 },
     { id: 'D', char: 'diamond', weight: 2, payout: 50 },
@@ -147,14 +145,25 @@ function startGame(roomId) {
     let activeCount = 0;
 
     room.players.forEach(p => {
-        p.hasCashedOut = false; p.hasFinishedTurn = false; p.choice = null; p.hand = []; p.score = 0;
+        p.hasCashedOut = false;
+        p.hasFinishedTurn = false;
+        p.choice = null;
+        p.hand = [];
+        p.score = 0;
+
         if (p.isReady) {
-            p.isAlive = true; p.isSpectator = false; p.winnings = p.betAmount;
+            p.isAlive = true;
+            p.isSpectator = false;
+            p.wasInactive = false; // Le joueur est actif
+            p.winnings = p.betAmount;
             p.balance -= p.betAmount;
             db.updateBalance(p.dbId, -p.betAmount);
             activeCount++;
         } else {
-            p.isAlive = false; p.isSpectator = true; p.winnings = 0;
+            p.isAlive = false;
+            p.isSpectator = true;
+            p.winnings = 0;
+            p.wasInactive = true; // Marqué pour être kické à la fin
         }
     });
 
@@ -237,13 +246,16 @@ function resolveClassicRound(roomId) {
     room.isProcessing = true;
     const activePlayers = room.players.filter(p => p.isAlive && !p.hasCashedOut && !p.isSpectator);
     const someonePlayed = activePlayers.some(p => p.choice !== null);
+
+    // ANTI-AFK
     if (!someonePlayed && activePlayers.length > 0) {
-        io.to(roomId).emit('force_disconnect', "AFK Detecté.");
+        io.to(roomId).emit('force_disconnect', "AFK Detecté. Table fermée.");
         io.in(roomId).socketsLeave(roomId);
         delete rooms[roomId];
         broadcastRoomList();
         return;
     }
+
     if (room.deck.length === 0) room.deck = createDeck();
     const card = room.deck.pop();
     room.drawnCards.push(card);
@@ -322,10 +334,36 @@ function endGame(roomId) {
 function autoResetLobby(roomId) {
     const room = rooms[roomId];
     if (!room) return;
+
+    // --- NETTOYAGE DES JOUEURS INACTIFS (KICK) ---
+    const nextPlayers = [];
+    room.players.forEach(p => {
+        if (p.wasInactive) {
+            // On envoie un message forcé de déconnexion au joueur concerné
+            io.to(p.id).emit('force_disconnect', "Vous avez été exclu pour inactivité (Aucune mise).");
+            // On le retire de la room socket
+            const s = io.sockets.sockets.get(p.id);
+            if (s) s.leave(roomId);
+        } else {
+            nextPlayers.push(p);
+        }
+    });
+    room.players = nextPlayers;
+
+    // --- SUPPRESSION DE LA TABLE SI VIDE ---
+    if (room.players.length === 0) {
+        console.log(`[${roomId}] Table vide après nettoyage. Suppression.`);
+        if (room.timerInterval) clearInterval(room.timerInterval);
+        delete rooms[roomId];
+        broadcastRoomList();
+        return;
+    }
+
+    // --- RESET POUR LE PROCHAIN TOUR ---
     room.gameState = 'LOBBY'; room.round = 0; room.drawnCards = []; room.timeLeft = 0; room.isProcessing = false;
     room.players.forEach(p => {
         p.isReady = false; p.isAlive = true; p.isSpectator = false;
-        p.hasCashedOut = false; p.hasFinishedTurn = false;
+        p.hasCashedOut = false; p.hasFinishedTurn = false; p.wasInactive = false; // Reset flag
         p.choice = null; p.winnings = 0; p.hand = []; p.score = 0;
     });
     startLobbyTimer(roomId);
@@ -363,9 +401,11 @@ io.on('connection', (socket) => {
 
         const room = rooms[roomId];
         const isLateJoiner = (room.gameState === 'PLAYING' || room.gameState === 'ENDED') && gameType !== 'SLOTS';
+
         const newPlayer = {
             id: socket.id, dbId: dbId, name: username, balance: currentBalance,
             betAmount: 0, isReady: false, isAlive: true, isSpectator: isLateJoiner,
+            wasInactive: false, // Initialisé à false
             hasCashedOut: false, hasFinishedTurn: false,
             choice: null, winnings: 0, hand: [], score: 0
         };
@@ -418,9 +458,7 @@ io.on('connection', (socket) => {
                     player.balance -= player.betAmount;
                     db.updateBalance(player.dbId, -player.betAmount);
 
-                    const r1 = spinReel();
-                    const r2 = spinReel();
-                    const r3 = spinReel();
+                    const r1 = spinReel(); const r2 = spinReel(); const r3 = spinReel();
                     const result = [r1, r2, r3];
 
                     let win = 0;
@@ -439,12 +477,13 @@ io.on('connection', (socket) => {
 
                     io.to(roomId).emit('update_room', _sanitizeRoom(room));
 
+                    // FIX SLOTS : On nettoie la main après le délai d'animation pour permettre un vrai "nouveau tour"
                     setTimeout(() => {
                         player.hasFinishedTurn = false;
-                        player.hand = []; // Nettoyage
+                        player.hand = [];
                         player.winnings = 0;
                         io.to(roomId).emit('update_room', _sanitizeRoom(room));
-                    }, 2000);
+                    }, 4500); // 4.5s = temps d'anim + marge
 
                 } else {
                     socket.emit('error', "Pas assez d'argent pour lancer !");
