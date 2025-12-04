@@ -1,7 +1,6 @@
-// src/components/layout/Navbar.jsx
 import React from 'react';
-// 1. ON IMPORTE LA NOUVELLE ICÔNE ET ON RETIRE L'ANCIENNE (IconRoulette)
-import { IconUser, IconWallet, IconLuckySeven, IconCards, IconTrophy, IconLogout, IconNumber21 } from '../ui/Icons';
+// Import de IconSlots
+import { IconUser, IconWallet, IconRoulette, IconCards, IconTrophy, IconLogout, IconNumber21, IconSlots } from '../ui/Icons';
 
 export default function Navbar({ user, currentView, changeView, logout }) {
     if (!user) return null;
@@ -32,12 +31,19 @@ export default function Navbar({ user, currentView, changeView, logout }) {
                     <IconNumber21 /> Blackjack
                 </button>
 
-                {/* 2. UTILISE IconLuckySeven ICI POUR LA ROULETTE */}
+                {/* NOUVEAU : BOUTON SLOTS */}
+                <button
+                    className={`nav-link ${currentView === 'SLOTS' ? 'active' : ''}`}
+                    onClick={() => changeView('SLOTS')}
+                >
+                    <IconSlots /> Slots
+                </button>
+
                 <button
                     className={`nav-link ${currentView === 'ROULETTE' ? 'active' : ''}`}
                     onClick={() => changeView('ROULETTE')}
                 >
-                    <IconLuckySeven /> Roulette
+                    <IconRoulette /> Roulette
                 </button>
 
                 <button

@@ -1,14 +1,12 @@
-// src/components/ui/ResultOverlay.jsx
 import React, { useMemo } from 'react';
 
 export default function ResultOverlay({ bet, winnings }) {
     const net = winnings - bet;
 
-    // On calcule la position et rotation aléatoire UNE SEULE FOIS au chargement
     const style = useMemo(() => {
-        const randomX = Math.floor(Math.random() * 20 - 10); // Décalage X
-        const randomY = Math.floor(Math.random() * 20 - 10); // Décalage Y
-        const rotation = Math.floor(Math.random() * 30 - 15); // Rotation
+        const randomX = Math.floor(Math.random() * 20 - 10);
+        const randomY = Math.floor(Math.random() * 20 - 10);
+        const rotation = Math.floor(Math.random() * 30 - 15);
 
         return {
             transform: `translate(calc(-50% + ${randomX}%), calc(-50% + ${randomY}%)) rotate(${rotation}deg)`
@@ -19,10 +17,10 @@ export default function ResultOverlay({ bet, winnings }) {
     let className = "result-text";
 
     if (winnings === 0) {
-        text = `-${bet}$`;
+        text = `-${bet}$`; // Ajout du $
         className += " loss";
     } else if (net > 0) {
-        text = `+${net}$`;
+        text = `+${net}$`; // Ajout du $
         className += " win";
     } else {
         text = "PUSH";
@@ -30,9 +28,7 @@ export default function ResultOverlay({ bet, winnings }) {
     }
 
     return (
-        // Le conteneur gère la position et la rotation
         <div className="result-overlay-container" style={style}>
-            {/* Le texte gère l'animation pop/glow/fade */}
             <span className={className}>{text}</span>
         </div>
     );

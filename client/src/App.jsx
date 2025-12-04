@@ -8,6 +8,7 @@ import Auth from './components/layout/Auth';
 import Lobby from './views/Lobby';
 import Game from './views/Game';
 import Blackjack from './views/Blackjack';
+import Slots from './views/Slots';
 import Ranking from './views/Ranking';
 import { IconRoulette } from './components/ui/Icons';
 
@@ -25,13 +26,11 @@ function App() {
 
     // --- 1. PERSISTANCE (RESTORE SESSION) ---
     useEffect(() => {
-        // Au chargement, on regarde si on a un utilisateur en mémoire
         const savedUser = localStorage.getItem('gamble_user');
         if (savedUser) {
             try {
                 const parsedUser = JSON.parse(savedUser);
                 setUser(parsedUser);
-                // On pourrait ici appeler une route /me pour vérifier le token/solde à jour
             } catch (e) {
                 console.error("Erreur lecture session");
                 localStorage.removeItem('gamble_user');
@@ -41,37 +40,27 @@ function App() {
 
     // --- 2. SOCKET LISTENERS ---
     useEffect(() => {
-        // Écouter la mise à jour de la salle
         socket.on("update_room", (data) => {
             setRoomData(data);
             if(data.timeLeft !== undefined) setTimeLeft(data.timeLeft);
 
-            // Mise à jour du solde en temps réel si on joue
             if (user && data.players) {
                 const me = data.players.find(p => p.dbId === user.id);
                 if (me && me.balance !== undefined) {
                     const updatedUser = { ...user, balance: me.balance };
                     setUser(updatedUser);
-                    // On met à jour le localStorage aussi pour le prochain refresh
                     localStorage.setItem('gamble_user', JSON.stringify(updatedUser));
                 }
             }
         });
 
         socket.on("timer_update", (time) => setTimeLeft(time));
-
-        // CORRECTION TABLES : On reçoit la liste
-        socket.on("room_list", (list) => {
-            setRoomsList(list);
-        });
-
+        socket.on("room_list", (list) => setRoomsList(list));
         socket.on("error", (msg) => { alert(msg); });
 
         socket.on("force_disconnect", (msg) => {
             alert(msg);
-            setInGame(false);
-            setRoomData(null);
-            setRoomId("");
+            handleLeaveRoom();
         });
 
         return () => {
@@ -86,7 +75,6 @@ function App() {
     // --- ACTIONS ---
     const handleAuth = async (form, isRegistering) => {
         const endpoint = isRegistering ? '/register' : '/login';
-        // Utilisation de la config .env (via import.meta) ou fallback
         const URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
         try {
             const res = await fetch(`${URL}${endpoint}`, {
@@ -98,7 +86,6 @@ function App() {
             if (data.success) {
                 const newUser = { id: data.id, username: data.username, balance: data.balance };
                 setUser(newUser);
-                // SAUVEGARDE DANS LE NAVIGATEUR
                 localStorage.setItem('gamble_user', JSON.stringify(newUser));
             }
             else { alert(data.error); }
@@ -107,9 +94,7 @@ function App() {
 
     const handleLogout = () => {
         setUser(null);
-        setInGame(false);
-        setRoomData(null);
-        // NETTOYAGE DU NAVIGATEUR
+        handleLeaveRoom();
         localStorage.removeItem('gamble_user');
     };
 
@@ -131,10 +116,32 @@ function App() {
     };
 
     const handleLeaveRoom = () => {
-        socket.emit("leave_room", roomId);
+        if (roomId) socket.emit("leave_room", roomId);
         setInGame(false);
         setRoomData(null);
         setRoomId("");
+        if (currentView === 'SLOTS') setCurrentView('CLASSIC');
+    };
+
+    // --- NAVIGATION (AUTO-JOIN POUR SLOTS) ---
+    const handleChangeView = (view) => {
+        if (inGame) handleLeaveRoom();
+
+        if (view === 'SLOTS') {
+            const soloRoomId = `slot_${user.id}_${Date.now()}`;
+            setCurrentView('SLOTS');
+            socket.emit("join_room", {
+                roomId: soloRoomId,
+                username: user.username,
+                dbId: user.id,
+                currentBalance: user.balance,
+                gameType: 'SLOTS'
+            });
+            setInGame(true);
+            setRoomId(soloRoomId);
+        } else {
+            setCurrentView(view);
+        }
     };
 
     // --- RENDER ---
@@ -144,6 +151,8 @@ function App() {
 
             if (roomData.type === 'BLACKJACK') {
                 return <Blackjack roomData={roomData} timeLeft={timeLeft} leaveRoom={handleLeaveRoom} betAmount={betAmount} setBetAmount={setBetAmount} />;
+            } else if (roomData.type === 'SLOTS') {
+                return <Slots roomData={roomData} leaveRoom={handleLeaveRoom} betAmount={betAmount} setBetAmount={setBetAmount} />;
             } else {
                 return <Game roomData={roomData} timeLeft={timeLeft} leaveRoom={handleLeaveRoom} betAmount={betAmount} setBetAmount={setBetAmount} />;
             }
@@ -154,6 +163,8 @@ function App() {
                 return <Lobby roomsList={roomsList} onJoin={handleJoinRoom} gameType="CLASSIC" />;
             case 'BLACKJACK':
                 return <Lobby roomsList={roomsList} onJoin={handleJoinRoom} gameType="BLACKJACK" />;
+            case 'SLOTS':
+                return <p style={{color:'white', marginTop:50}}>Chargement machine à sous...</p>;
             case 'ROULETTE':
                 return (
                     <div className="placeholder-view">
@@ -176,13 +187,7 @@ function App() {
             <Navbar
                 user={user}
                 currentView={currentView}
-                changeView={(view) => {
-                    if (!inGame) setCurrentView(view);
-                    else if(confirm("Quitter la table pour voir le menu ?")) {
-                        handleLeaveRoom();
-                        setCurrentView(view);
-                    }
-                }}
+                changeView={handleChangeView}
                 logout={handleLogout}
             />
 
