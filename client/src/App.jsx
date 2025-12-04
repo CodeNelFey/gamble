@@ -3,7 +3,7 @@ import { socket } from './services/socket';
 import './App.css';
 
 // Import Views & Components
-import Navbar from './components/layout/Navbar';
+import Navbar from './components/layout/Navbar.jsx';
 import Auth from './components/layout/Auth';
 import Lobby from './views/Lobby';
 import Game from './views/Game';
